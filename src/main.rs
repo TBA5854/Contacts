@@ -20,6 +20,67 @@ fn main() {
     menu();
 }
 
+fn edit() -> bool{
+    let mut edited:bool = false;
+    println!("Enter the SNO of the contact to edit: ");
+    let mut sno_edit = String::new();
+    io::stdin().read_line(&mut sno_edit).expect("read err");
+    sno_edit=sno_edit.trim().to_string();
+    if sno_edit.parse::<i32>().is_ok() && sno_edit.parse::<i32>().expect("it shouldnt raise err")>count()
+    {return false;}
+    let mut new_name=String::new();
+    println!("Enter the new Name: ");
+    io::stdin().read_line(&mut new_name).expect("read err");
+    new_name=new_name.trim().to_string();
+    let mut new_num =String::new();
+    println!("Enter the new Number: ");
+    io::stdin().read_line(&mut new_num).expect("read err");
+    new_num=new_num.trim().to_string();
+    let file_path_source = "./contacts.csv";
+    let file_path_target = "./contacts_temp.csv";
+    std::fs::File::create("./contacts_temp.csv").expect("couldnt create file");
+    reset_or_create("contacts_temp");
+    {   
+        let file_source = std::fs::OpenOptions::new().read(true).open(file_path_source).expect("couldnt open file");
+        let file_target = std::fs::OpenOptions::new().append(true).open(file_path_target).expect("couldnt open file");
+        let mut reader_source = csv::Reader::from_reader(file_source);
+        let mut writer_target = csv::Writer::from_writer(file_target);
+        for record in reader_source.records()
+        {
+            let record=record.expect("couldnt read");
+            if sno_edit==record[0]
+            {
+                edited=true;
+            writer_target.write_record(&[record[0].to_string(),new_name.clone(),new_num.clone()]).expect("couldnt write");
+            writer_target.flush().expect("couldnt write");
+            continue;
+            }
+            writer_target.write_record(&record).expect("couldnt write");
+            writer_target.flush().expect("couldnt write");
+        }
+    }
+    std::fs::remove_file("./contacts.csv").expect("couldnt remove temp file");
+    std::fs::File::create("./contacts.csv").expect("couldnt create file");
+    reset_or_create("contacts");
+    {
+        let file_source = std::fs::OpenOptions::new().read(true).open(file_path_target).expect("couldnt open file");
+        let file_target = std::fs::OpenOptions::new().append(true).open(file_path_source).expect("couldnt open file");
+        let mut reader_source = csv::Reader::from_reader(file_source);
+        let mut writer_target = csv::Writer::from_writer(file_target);
+        for record in reader_source.records()
+        {
+            let record=record.expect("couldnt read");
+            let sno = count()+1;
+            let name=&record[1];
+            let number=&record[2];
+            writer_target.write_record(&[sno.to_string(), name.to_string(), number.to_string()]).expect("couldnt write");
+            writer_target.flush().expect("couldnt write");
+        }
+    }
+    std::fs::remove_file("./contacts_temp.csv").expect("couldnt remove temp file");
+    return edited;
+}
+
 fn reset_or_create(s:&str) {
     let path=format!("./{s}.csv");
     let file_obj = std::fs::OpenOptions::new().write(true).open(path).expect("couldnt open file");
@@ -34,6 +95,8 @@ fn del() -> bool {
     let mut sno_del = String::new();
     io::stdin().read_line(&mut sno_del).expect("read err");
     sno_del=sno_del.trim().to_string();
+    if sno_del.parse::<i32>().is_ok() && sno_del.parse::<i32>().expect("it shouldnt raise err")>count()
+    {return false;}
     let file_path_source = "./contacts.csv";
     let file_path_target = "./contacts_temp.csv";
     std::fs::File::create("./contacts_temp.csv").expect("couldnt create file");
@@ -107,9 +170,10 @@ fn start() {
 	print!("2.Append Contacts\n");
 	print!("3.Count number of contacts saved\n");
 	print!("4.Export Contacts\n");
-	print!("5.Delete a contact\n");
-	print!("6.Go back to menu\n");
-	print!("7.Exit\n");
+	print!("5.Edit Contact\n");
+	print!("6.Delete a contact\n");
+	print!("7.Go back to menu\n");
+	print!("8.Exit\n");
 	print!(">>");
     io::stdout().flush().unwrap();
     let ch: i32;
@@ -160,7 +224,18 @@ fn start() {
 	back();
 	start();
 	}
-	 5=>{
+    5=>{
+        print!("\n\tEdit a Contact\n\n");
+        if edit(){
+        print!("\nOperation Comleted\n");
+        }
+        else {
+        print!("\nOperation Failed , SNO not found\n");
+        }
+        back();
+        start();
+        }
+	 6=>{
 	print!("\n\tDelete a Contact\n\n");
     if del(){
 	print!("\nOperation Comleted\n");
@@ -171,10 +246,10 @@ fn start() {
     back();
 	start();
 	}
-	 6=>{
+	 7=>{
 	menu();
 	}
-	7=>{
+	8=>{
 	end();}
 	_=>{
 	print!("Invalid input , program is exiting !!!");
