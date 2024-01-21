@@ -1,70 +1,118 @@
 use csv;
-use std::io::{self, Write};
+use std::{io::{self, Write}, path::Path};
 static mut ONCE: i8 = 0;
 fn main() {
-    back();
+    let mut path_of_oper=String::new();
+    loop {
+        print!("Enter Path to store files \t(DON'T USE ~)\n>>");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut path_of_oper).expect("read err");
+    path_of_oper=path_of_oper.trim().to_string();
+    if std::path::Path::new(&path_of_oper).exists()
+    {
+        std::env::set_current_dir(path_of_oper).expect("couldnt change path");
+        break;}
+        else {
+            println!("Path Doesnt exists !!!");
+            path_of_oper=String::new();
+        }
+    }
+    menu();
 }
 
-fn del() {
-    let mut csv_reader = csv::Reader::from_path("./resources/contacts.csv").expect("file couldnt be opened");
-    let mut csv_writer = csv::Writer::from_path("./resources/contacts.csv").expect("could not open file");
-    let mut name = String::new();
-    let mut number = String::new();
-    let mut _sno = String::new();
-    println!("Enter the name of contact to delete : ");
-    io::stdin().read_line(&mut name).expect("read err");
-    name = name.trim().to_string();
-    println!("Enter the number of contact to delete : ");
-    io::stdin().read_line(&mut number).expect("read err");
-    number = number.trim().to_string();
-    for result in csv_reader.records() {
-        let record = result.expect("file couldnt be read");
-        let sno = &record[0];
-        let name1 = &record[1];
-        let number1 = &record[2];
-        if name1 == &name && number1 == &number {
-            continue;
+fn reset_or_create(s:&str) {
+    let path=format!("./{s}.csv");
+    let file_obj = std::fs::OpenOptions::new().write(true).open(path).expect("couldnt open file");
+    let mut csv_writer = csv::Writer::from_writer(file_obj);
+    csv_writer.write_record(["SNO".to_string(), "NAME".to_string(), "NUMBER".to_string()]).expect("couldnt write");
+    csv_writer.flush().expect("couldnt flush changes");
+}
+
+fn del() -> bool {
+    let mut deletion:bool = false;
+    println!("Enter the SNO of the contact to delete: ");
+    let mut sno_del = String::new();
+    io::stdin().read_line(&mut sno_del).expect("read err");
+    sno_del=sno_del.trim().to_string();
+    let file_path_source = "./contacts.csv";
+    let file_path_target = "./contacts_temp.csv";
+    std::fs::File::create("./contacts_temp.csv").expect("couldnt create file");
+    reset_or_create("contacts_temp");
+    {   
+        let file_source = std::fs::OpenOptions::new().read(true).open(file_path_source).expect("couldnt open file");
+        let file_target = std::fs::OpenOptions::new().append(true).open(file_path_target).expect("couldnt open file");
+        let mut reader_source = csv::Reader::from_reader(file_source);
+        let mut writer_target = csv::Writer::from_writer(file_target);
+        for record in reader_source.records()
+        {
+            let record=record.expect("couldnt read");
+            if sno_del==record[0]{deletion=true;continue;}
+            writer_target.write_record(&record).expect("couldnt write");
+            writer_target.flush().expect("couldnt write");
         }
-        csv_writer.write_record(&[sno.to_string(), name.to_string(), number.to_string()]);
     }
-    csv_writer.flush();
+    std::fs::remove_file("./contacts.csv").expect("couldnt remove temp file");
+    std::fs::File::create("./contacts.csv").expect("couldnt create file");
+    reset_or_create("contacts");
+    {
+        let file_source = std::fs::OpenOptions::new().read(true).open(file_path_target).expect("couldnt open file");
+        let file_target = std::fs::OpenOptions::new().append(true).open(file_path_source).expect("couldnt open file");
+        let mut reader_source = csv::Reader::from_reader(file_source);
+        let mut writer_target = csv::Writer::from_writer(file_target);
+        for record in reader_source.records()
+        {
+            let record=record.expect("couldnt read");
+            let sno = count()+1;
+            let name=&record[1];
+            let number=&record[2];
+            writer_target.write_record(&[sno.to_string(), name.to_string(), number.to_string()]).expect("couldnt write");
+            writer_target.flush().expect("couldnt write");
+        }
+    }
+    std::fs::remove_file("./contacts_temp.csv").expect("couldnt remove temp file");
+    return deletion;
 }
 
 fn write_file() {
-    let mut csv_writer = csv::Writer::from_path("./resources/contacts.csv").expect("could not open file");
-    let mut name = String::new();
-    let mut number = String::new();
+    let file_obj = std::fs::OpenOptions::new().append(true).open("./contacts.csv").expect("couldnt open file");
+    let mut csv_writer = csv::Writer::from_writer(file_obj);
     println!("Enter the number of contacts to append: ");
     let mut num_contacts = String::new();
     io::stdin().read_line(&mut num_contacts).expect("read err");
     let num_contacts: usize = num_contacts.trim().parse().expect("Invalid input");
-
     for _ in 0..num_contacts {
         println!("Enter name : ");
-        io::stdin().read_line(&mut name).expect("read err");
-        name = name.trim().to_string();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).expect("read err");
+        let name = input.trim().to_string();
         println!("Enter number : ");
-        io::stdin().read_line(&mut number).expect("read err");
-        number = number.trim().to_string();
-        let sno = count();
-        csv_writer.write_record(&[sno.to_string(), name, number]);
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).expect("read err");
+        let number = input.trim().to_string();
+        let sno = count()+1;
+        csv_writer.write_record(&[sno.to_string(), name, number]).expect("couldnt write");
+        csv_writer.flush().expect("couldnt flush changes");
     }
-
-    csv_writer.flush();
 }
 
 fn start() {
+    let precheck:bool = Path::new("./contacts.csv").exists();
+    if !precheck
+    {
+        std::fs::File::create("./contacts.csv").expect("couldnt create file");
+        reset_or_create("contacts");
+    }
 	print!("\n\tContacts\n\n");
 	print!("1.Read Contacts\n");
 	print!("2.Append Contacts\n");
 	print!("3.Count number of contacts saved\n");
 	print!("4.Export Contacts\n");
 	print!("5.Delete a contact\n");
-	print!("6.Reset/Create CSV\n");
-	print!("7.Go back to menu\n");
-	print!("8.Exit\n");
+	print!("6.Go back to menu\n");
+	print!("7.Exit\n");
 	print!(">>");
-    let mut ch: i32;
+    io::stdout().flush().unwrap();
+    let ch: i32;
     loop {
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("read err");
@@ -77,38 +125,50 @@ fn start() {
         }
     }
 	match ch {
-        1 =>
-	{print!("\n\tRead Contacts\n\n");
-read_file();
-	print!("\nOperation Comleted\n");
-	back();
-	start();}
+        1 => {
+            print!("\n\tRead Contacts\n\n");
+            println!("\n{}\n", "-".repeat(50));
+            read_file();
+            println!("\n{}\n", "-".repeat(50));
+            print!("\nOperation Completed\n");
+            back();
+            start();
+        }
 	 2 =>{
 	print!("\n\tAppend Contacts\n\n");
-write_file();
-	print!("\nOperation Comleted\n");
+            println!("\n{}\n", "-".repeat(50));
+            write_file();
+            println!("\n{}\n", "-".repeat(50));
+            print!("\nOperation Comleted\n");
 	back();
 	start();
 	}
 	 3=>{
 	print!("\n\tCount Contacts\n\n");
-    print!("Number of contacts are :{}\n",count());
+    print!("Number of contacts are : {}\n",count());
 	print!("\nOperation Comleted\n");
 	back();
 	start();
 	}
 	 4=>{
 	print!("\n\tExport Contacts\n\n");
-	vcf_writer();
-	print!("\nOperation Comleted\n");
+	if vcf_writer(){
+	print!("\nOperation Comleted\n");}
+    else {
+        println!("No Contacts Appended !!! , Nothing to Export\n\tOperation Failed")
+    }
 	back();
 	start();
 	}
 	 5=>{
 	print!("\n\tDelete a Contact\n\n");
-    del();
+    if del(){
 	print!("\nOperation Comleted\n");
-	back();
+    }
+    else {
+	print!("\nOperation Failed , SNO not found\n");
+    }
+    back();
 	start();
 	}
 	 6=>{
@@ -122,31 +182,42 @@ write_file();
 	}
 }
 
-fn vcf_writer(){
-    let mut rdr = csv::Reader::from_path("contacts.csv").expect("couldnt open file");
-    let mut file = std::fs::OpenOptions::new().append(true).open("contact.vcf").expect("couldnt open file");
+fn vcf_writer() -> bool{
+    if count()==0
+    {
+        return false;
+    }
+    let precheck:bool = Path::new("./contacts.vcf").exists();
+    if precheck
+    {
+        std::fs::remove_file("./contacts.vcf").expect("couldnt remove temp file");
+    }
+std::fs::File::create("./contacts.vcf").expect("couldnt create file");
+    let mut csv_file = csv::Reader::from_path("./contacts.csv").expect("couldnt open file");
+    let mut file = std::fs::OpenOptions::new().write(true).open("./contacts.vcf").expect("couldnt open file");
 
-    for result in rdr.records() {
+    for result in csv_file.records() {
         let record = result.expect("couldnt parse");
-        let name = &record[0];
-        let phone = &record[1];
+        let name = &record[1];
+        let phone = &record[2];
 
         write!(file, "BEGIN:VCARD\n").expect("couldnt write");
         write!(file, "VERSION:3.0\n").expect("couldnt write");
         write!(file, "N:{}\n", name).expect("couldnt write");
         write!(file, "TEL:{}\n", phone).expect("couldnt write");
         write!(file, "END:VCARD\n").expect("couldnt write");
+        file.flush().expect("couldnt write");
     }
+    return true;
 }
 
-
 fn count() -> i32 {
-let mut csv_reader = csv::Reader::from_path("./resources/contacts.csv").expect("file couldnt be opened");
+let mut csv_reader = csv::Reader::from_path("./contacts.csv").expect("file couldnt be opened");
 let mut count=0;
 for _ in csv_reader.records() {
 count+=1;
 }
-count
+return count;
 }
 
 fn end() {
@@ -173,15 +244,16 @@ if unsafe { ONCE } == 0 {
     println!("Hello fellow user, you have started the Contacts Program!\n");
     unsafe{ONCE += 1;}
 }
-println!("\n\tMenu\n\n");
-println!("Use the resources below and type 4 to start\n(Enter number to choose the option)\n\n");
-println!("1. Disclaimer\n");
-println!("2. Info\n");
-println!("3. Contact Developer\n");
-println!("4. Start\n");
-println!("5. Exit\n");
-println!(">>");
-let mut ch: i32;
+print!("\n\tMenu\n\n");
+print!("Use the resources below and type 4 to start\n(Enter number to choose the option)\n\n");
+print!("1. Disclaimer\n");
+print!("2. Info\n");
+print!("3. Contact Developer\n");
+print!("4. Start\n");
+print!("5. Exit\n");
+print!(">>");
+io::stdout().flush().unwrap();
+let ch: i8;
 loop {
     let mut input = String::new();
     io::stdin().read_line(&mut input).expect("read err");
@@ -193,8 +265,7 @@ loop {
         Err(_) => println!("Please type a number !!!"),
     }
 }
-    match ch
-    {
+match ch {
         1 => {println!("\n\tDisclaimer\n\n");
         println!("-->This program works the best when\n the user follows instructions\n-->Check Info for instructions");
         back();
@@ -221,19 +292,17 @@ fn info() {
 	println!("2.This program can store , count , read contacts in csv file and them export all as vcf\n");
 	println!("3.Only enter option number\n");
 	println!("4.Never enter a alphabet unless asked to do so\n");
-	println!("5.Never type space in names\n");
-	println!("6.For 1st time use , create CSV before\n doing anything ");
-	println!("7.If Contacts become corrupted , try resetting csv");
 }
 
 fn read_file() {
-    let mut csv_reader = csv::Reader::from_path("./resources/contacts.csv").expect("file couldnt be opened");
+    let mut csv_reader = csv::Reader::from_path("./contacts.csv").expect("file couldnt be opened");
+    println!("SNO\t\t\tNAME\t\t\tNUMBER");
     
     for result in csv_reader.records() {
         let record = result.expect("file couldnt be read");
         let sno = &record[0];
         let name = &record[1];
         let number = &record[2];
-        println!("{} {} {}", sno, name, number);
+        println!("{}\t\t\t{}\t\t\t{}", sno, name, number);
     }   
 }

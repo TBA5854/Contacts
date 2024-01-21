@@ -1,5 +1,5 @@
 [package]
-name = "Contacts"
+name = "contacts"
 version = "0.1.0"
 edition = "2021"
 

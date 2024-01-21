@@ -1,1 +1,1 @@
-/home/tba/Desktop/Rust-1/Contacts/target/debug/Contacts: /home/tba/Desktop/Rust-1/Contacts/src/main.rs
+/home/tba/Desktop/Rust/contacts/target/debug/Contacts: /home/tba/Desktop/Rust/contacts/src/main.rs

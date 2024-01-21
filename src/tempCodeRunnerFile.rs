@@ -1,2 +1,1 @@
-    File::create("./resources/contacts.csv")
-// }
+path_of_oper)
